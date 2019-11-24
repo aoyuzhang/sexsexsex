@@ -4,8 +4,8 @@ import numpy as np
 
 class NN(object):
     def __init__(self,
-                 hidden_dims=(2, 3),
-                 datapath='/kaggle/input/cifer10/cifar10.pkl',
+                 hidden_dims=(512, 256),
+                 datapath='cifar10.pkl',
                  n_classes=10,
                  epsilon=1e-6,
                  lr=7e-4,
@@ -45,8 +45,6 @@ class NN(object):
         for layer_n in range(1, self.n_hidden + 2):
             self.weights[f"W{layer_n}"] = np.random.uniform(-1/np.sqrt(all_dims[layer_n-1]),1/np.sqrt(all_dims[layer_n-1]),(all_dims[layer_n-1],all_dims[layer_n]))
             self.weights[f"b{layer_n}"] = np.zeros((1, all_dims[layer_n]))
-            print(f"W{layer_n}")
-            print(np.shape(self.weights[f"W{layer_n}"]))
 
     def relu(self, x, grad=False):
         numpy_x= np.array(x)
@@ -98,21 +96,20 @@ class NN(object):
         for layer_n in range(1, self.n_hidden + 2):
             layer_nmo=layer_n-1
             cache[f"A{layer_n}"] = np.add(np.transpose(np.transpose(self.weights[f"W{layer_n}"]).dot(np.transpose(cache[f"Z{layer_nmo}"]))),np.repeat(self.weights[f"b{layer_n}"],len(x),axis=0))
+
             if layer_n == self.n_hidden + 1:
                 cache[f"Z{layer_n}"] = np.apply_along_axis(self.softmax, 1,cache[f"A{layer_n}"])
             else: 
                 cache[f"Z{layer_n}"] = np.apply_along_axis(self.activation, 1,cache[f"A{layer_n}"])
         return cache
 
-    
+
     def columnTimesMatrix(self,v,M):
-        temp= np.zeros((np.shape(M)[1],len(v)))
+        temp= np.zeros((len(v),np.shape(M)[1]))
         for i in range(np.shape(M)[0]):
-            temp=temp+M[i,:][:,None]*v[None,:]      
+            temp=temp+v[:,None]*M[i,:][None,:]
         return temp/np.shape(M)[0]
-    
-        
-    
+
     def backward(self, cache, labels):
 #         print(cache)
         output = cache[f"Z{self.n_hidden + 1}"]
@@ -121,35 +118,15 @@ class NN(object):
             layer_nmo=layer_n-1
             layer_npo=layer_n+1
             if layer_n== self.n_hidden+1:
-                print(layer_n)
                 grads[f"dA{layer_n}"]= np.mean(output-labels,axis=0)
                 grads[f"dW{layer_n}"]= self.columnTimesMatrix(grads[f"dA{layer_n}"], cache[f"Z{layer_nmo}"])
                 grads[f"db{layer_n}"]= grads[f"dA{layer_n}"]
-                print(f"dA{layer_n}")
-                print(np.shape(grads[f"dA{layer_n}"]))
-                print(f"dW{layer_n}")
-                print(np.shape(grads[f"dW{layer_n}"]))
-                print(f"db{layer_n}")
-                print(np.shape(grads[f"db{layer_n}"]))
             else:
-                print("layern is")
-                print(layer_n)
-                print(f"W{layer_npo}")
-                print(np.shape(self.weights[f"W{layer_npo}"]))
-                print(f"dA{layer_npo}")
-                print(np.shape(grads[f"dA{layer_npo}"]))
                 grads[f"dZ{layer_n}"]= self.weights[f"W{layer_npo}"].dot(grads[f"dA{layer_npo}"])
-                print(f"A{layer_n}")
-                print(np.shape(cache[f"A{layer_n}"]))
-                print(f"dZ{layer_n}")
-                print(np.shape(grads[f"dZ{layer_n}"]))
                 grads[f"dA{layer_n}"]= np.diag(grads[f"dZ{layer_n}"]).dot(np.mean(self.activation(cache[f"A{layer_n}"]),axis=0)) #np.mean(np.diag(grads[f"dZ{layer_n}"]).dot(np.transpose(self.activation(cache[f"A{layer_n}"],grad=True))),axis=1)
-                print(f"dA{layer_n}")
-                print(np.shape(grads[f"dA{layer_n}"]))
                 grads[f"dW{layer_n}"]= self.columnTimesMatrix(grads[f"dA{layer_n}"], cache[f"Z{layer_nmo}"])
                 grads[f"db{layer_n}"]= grads[f"dA{layer_n}"]
-                print(f"dW{layer_n}")
-                print(np.shape(grads[f"dW{layer_n}"]))
+
         # grads is a dictionary with keys dAm, dWm, dbm, dZ(m-1), dA(m-1), ..., dW1, db1
         # WRITE CODE HERE
         return grads
@@ -168,7 +145,6 @@ class NN(object):
         N = prediction.shape[0]
         ce = -np.sum(labels*np.log(prediction))/N
         return ce
-
 
 
     def compute_loss_and_accuracy(self, X, y):
@@ -211,12 +187,3 @@ class NN(object):
         # WRITE CODE HERE
         pass
         return 0
-
-
-aNeuralNet= NN()
-aNeuralNet.initialize_weights([3072,10])
-print(aNeuralNet.activation([[2,3],[2,3]]))
-#aNeuralNet.loss(np.array([0,1,0,0,0,0,0,0,0,0]),np.array([0.2,0.3,0.1,0.05,0.05,0,0,0,0.2,0.2]))
-theCache=aNeuralNet.forward(aNeuralNet.train[0][0:10])
-aNeuralNet.update(aNeuralNet.backward(theCache,aNeuralNet.one_hot(aNeuralNet.train[1][0:10])))
-#print(aNeuralNet.weights)
